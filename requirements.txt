@@ -1,0 +1,8 @@
+SpeechRecognition==3.10.1
+pygame==2.5.2
+google-genai==1.66.0
+requests==2.31.0
+python-dotenv==1.0.1
+pyaudio
+pyttsx3>=2.90
+setuptools>=82
