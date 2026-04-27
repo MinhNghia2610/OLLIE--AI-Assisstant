@@ -21,8 +21,9 @@ class Brain:
                     max_output_tokens=250,
                 ),
             )
-            text = (response.text or "").strip()
-            return text or "Mình chưa có câu trả lời phù hợp."
+
+            return (response.text or "").strip() or "Mình chưa có câu trả lời phù hợp."
+
         except Exception as e:
             print(f"Brain error: {e}")
             return "Não bộ đang bị nhiễu sóng."

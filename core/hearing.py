@@ -1,74 +1,42 @@
-import speech_recognition as sr
+import sounddevice as sd
+import numpy as np
+from scipy.io.wavfile import write
+import tempfile
+import os
 
 
 class Ear:
     def __init__(self):
-        self.recognizer = sr.Recognizer()
-        self.microphone = None
-        self.error_message = None
-        self.error_details = None
-        self.startup_message = None
-        self.selected_device_index = None
-        self.selected_device_name = "Default Microphone"
+        self.sample_rate = 16000
 
-        self._initialize_microphone()
+    def listen(self, duration=5):
+        """
+        Thu âm từ microphone và trả về file WAV path
+        (PRO stable version)
+        """
 
-    @property
-    def is_available(self) -> bool:
-        return self.microphone is not None
-
-    def _initialize_microphone(self) -> None:
         try:
-            self.microphone = sr.Microphone()
-            self.startup_message = "Đang dùng microphone mặc định của laptop."
-            self.error_message = None
-            self.error_details = None
-        except OSError as e:
-            self.error_details = str(e)
-            self.error_message = self._build_error_message(e)
+            print("🎤 OLLIE đang nghe...")
+
+            # record audio
+            audio = sd.rec(
+                int(duration * self.sample_rate),
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype="int16"
+            )
+            sd.wait()
+
+            # create safe temp file
+            fd, path = tempfile.mkstemp(suffix=".wav")
+            os.close(fd)  # important fix for macOS stability
+
+            # write wav file
+            write(path, self.sample_rate, audio)
+
+            print("✅ Đã thu âm xong")
+            return path
+
         except Exception as e:
-            self.error_details = str(e)
-            self.error_message = self._build_error_message(e)
-
-    def _build_error_message(self, error: Exception) -> str:
-        details = str(error).strip()
-
-        if "No Default Input Device Available" in details:
-            return (
-                "Không tìm thấy microphone mặc định. "
-                "Hãy chọn MacBook Microphone trong System Settings > Sound > Input "
-                "và cấp quyền Microphone cho ứng dụng đang chạy OLLIE."
-            )
-
-        if "distutils" in details:
-            return (
-                "Thiếu dependency Python để khởi tạo microphone. "
-                "Hãy cài lại môi trường OLLIE với setuptools."
-            )
-
-        return "Không thể khởi tạo microphone mặc định."
-
-    def listen(self):
-        """Thu âm và chuyển đổi thành văn bản tiếng Việt."""
-        if not self.microphone:
+            print(f"❌ Lỗi micro: {e}")
             return None
-
-        print("OLLIE đang nghe...", end="\r")
-        with self.microphone as source:
-            self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            try:
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=10)
-                text = self.recognizer.recognize_google(audio, language="vi-VN")
-                print(f"\nBạn nói: {text}")
-                return text.lower()
-            except sr.WaitTimeoutError:
-                return None
-            except sr.UnknownValueError:
-                print("\nOLLIE không nghe rõ bạn nói gì.")
-                return None
-            except sr.RequestError:
-                print("\nLỗi kết nối dịch vụ nhận dạng giọng nói.")
-                return None
-            except OSError as e:
-                print(f"\nThiếu công cụ hệ thống để xử lý âm thanh: {e}")
-                return None
